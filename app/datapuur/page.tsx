@@ -67,7 +67,7 @@ function DataPuurContent() {
   }
 
   return (
-    <main className="min-h-screen bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+    <main className="min-h-screen bg-white dark:bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden text-foreground">
       {/* Ambient background with moving particles */}
       <div className="h-full w-full absolute inset-0 z-0">
         <SparklesCore
@@ -93,7 +93,7 @@ function DataPuurContent() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-4xl font-bold text-white mb-6"
+                className="text-4xl font-bold text-foreground mb-6"
               >
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
                   DataPuur
@@ -105,7 +105,7 @@ function DataPuurContent() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-gray-400 text-xl mb-8"
+                className="text-foreground/70 dark:text-gray-400 text-xl mb-8"
               >
                 Manage, transform, and analyze your data with our powerful data processing tools.
               </motion.p>
@@ -126,7 +126,7 @@ function DataPuurContent() {
                     }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => router.push(card.href)}
-                    className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 cursor-pointer overflow-hidden relative group"
+                    className="bg-white/5 dark:bg-white/5 bg-black/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 dark:border-white/10 border-black/10 cursor-pointer overflow-hidden relative group"
                   >
                     {/* Animated gradient background on hover */}
                     <div
@@ -151,8 +151,8 @@ function DataPuurContent() {
                       />
                     </div>
 
-                    <h3 className="text-xl font-semibold text-white mb-2 relative z-10">{card.title}</h3>
-                    <p className="text-gray-400 relative z-10">{card.description}</p>
+                    <h3 className="text-xl font-semibold text-foreground mb-2 relative z-10">{card.title}</h3>
+                    <p className="text-foreground/70 dark:text-gray-400 relative z-10">{card.description}</p>
 
                     {/* Animated arrow */}
                     <motion.div

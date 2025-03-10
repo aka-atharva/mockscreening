@@ -181,7 +181,7 @@ export default function KGraphDashboardPage() {
                   whileHover={{ scale: 1.01 }}
                   className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-96 mb-8 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
                     <Network className="w-5 h-5 mr-2 text-purple-500" />
                     Knowledge Graph Visualization
                   </h3>
@@ -272,7 +272,7 @@ export default function KGraphDashboardPage() {
                     whileHover={{ scale: 1.02 }}
                     className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 relative overflow-hidden group"
                   >
-                    <h3 className="text-xl font-semibold text-white mb-4">Graph Metrics</h3>
+                    <h3 className="text-xl font-semibold text-foreground mb-4">Graph Metrics</h3>
                     <div className="space-y-4 mt-4">
                       {[
                         { label: "Total Nodes", value: dashboardData.metrics.total_nodes.toLocaleString(), delay: 0.1 },
@@ -287,7 +287,7 @@ export default function KGraphDashboardPage() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: metric.delay + 1 }}
                         >
-                          <span className="text-gray-400">{metric.label}</span>
+                          <span className="text-foreground/70 dark:text-gray-400">{metric.label}</span>
                           <motion.span
                             className="text-white font-medium"
                             initial={{ opacity: 0 }}
@@ -309,7 +309,7 @@ export default function KGraphDashboardPage() {
                     whileHover={{ scale: 1.02 }}
                     className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 relative overflow-hidden group"
                   >
-                    <h3 className="text-xl font-semibold text-white mb-4">Recent Updates</h3>
+                    <h3 className="text-xl font-semibold text-foreground mb-4">Recent Updates</h3>
                     <div className="space-y-4 mt-4">
                       {dashboardData.updates.map((update, index) => (
                         <motion.div
@@ -319,8 +319,8 @@ export default function KGraphDashboardPage() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.1 * index + 1 }}
                         >
-                          <p className="text-white">{update.action}</p>
-                          <p className="text-gray-400 text-sm">{update.time}</p>
+                          <p className="text-foreground">{update.action}</p>
+                          <p className="text-foreground/70 dark:text-gray-400 text-sm">{update.time}</p>
                         </motion.div>
                       ))}
                     </div>

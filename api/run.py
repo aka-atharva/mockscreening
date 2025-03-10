@@ -16,7 +16,7 @@ if __name__ == "__main__":
     has_static = check_static_files()
     
     # Get port from environment variable or use default
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8080))
     
     print(f"Starting server on port {port}")
     if has_static:
@@ -24,5 +24,5 @@ if __name__ == "__main__":
     print("API will be available at http://localhost:8000/api")
     
     # Run the FastAPI app with uvicorn
-    uvicorn.run("api.main:app", host="localhost", port=8080, reload=True)
+    uvicorn.run("api.main:app", host="192.168.29.166", port=8080, reload=True)
 

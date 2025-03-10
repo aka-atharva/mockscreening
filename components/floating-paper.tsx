@@ -50,8 +50,8 @@ export function FloatingPaper({ count = 5 }) {
             ease: "linear",
           }}
         >
-          <div className="relative w-16 h-20 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 flex items-center justify-center transform hover:scale-110 transition-transform">
-            <FileText className="w-8 h-8 text-purple-400/50" />
+          <div className="relative w-16 h-20 bg-white/5 dark:bg-white/5 bg-black/5 backdrop-blur-sm rounded-lg border border-white/10 dark:border-white/10 border-black/10 flex items-center justify-center transform hover:scale-110 transition-transform">
+            <FileText className="w-8 h-8 text-purple-400/50 dark:text-purple-400/50" />
           </div>
         </motion.div>
       ))}

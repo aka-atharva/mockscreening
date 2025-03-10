@@ -1,16 +1,18 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Menu, User, LogOut, Settings } from "lucide-react"
+import { Menu, User, LogOut, Settings, Sun, Moon } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import type React from "react"
 import { useAuth } from "@/lib/auth-context"
+import { useTheme } from "@/lib/theme-context"
 import { useState } from "react"
 import Image from "next/image"
 
 export default function Navbar() {
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLogoHovered, setIsLogoHovered] = useState(false)
 
@@ -18,7 +20,7 @@ export default function Navbar() {
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className="flex items-center justify-between px-6 py-4 backdrop-blur-sm border-b border-white/10"
+      className="flex items-center justify-between px-6 py-4 backdrop-blur-sm border-b border-white/10 dark:border-white/10 border-black/10"
     >
       <Link href="/" className="flex items-center space-x-3 group">
         <motion.div
@@ -66,9 +68,20 @@ export default function Navbar() {
       <div className="hidden md:flex items-center space-x-8">{/* Admin button moved next to user info */}</div>
 
       <div className="flex items-center space-x-4">
+        {/* Theme Toggle Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="text-foreground hover:text-purple-400"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button>
+
         {user ? (
           <>
-            <div className="text-white">
+            <div className="text-foreground">
               {user.username === "admin" && user.role === "admin" ? (
                 <span className="text-xs bg-purple-500 px-2 py-1 rounded-full">admin</span>
               ) : (
@@ -78,7 +91,7 @@ export default function Navbar() {
                 </>
               )}
             </div>
-            <Button variant="ghost" className="text-white hover:text-purple-400" onClick={logout}>
+            <Button variant="ghost" className="text-foreground hover:text-purple-400" onClick={logout}>
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
@@ -105,19 +118,24 @@ export default function Navbar() {
       </div>
 
       <div className="md:hidden">
-        <Button variant="ghost" size="icon" className="text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-foreground"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
           <Menu className="w-6 h-6" />
         </Button>
       </div>
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-black/90 backdrop-blur-sm border-b border-white/10 z-50">
+        <div className="md:hidden absolute top-full left-0 right-0 bg-background/90 backdrop-blur-sm border-b border-black/10 dark:border-white/10 z-50">
           <div className="flex flex-col p-4 space-y-4">
-            <div className="pt-2 border-t border-white/10">
+            <div className="pt-2 border-t border-black/10 dark:border-white/10">
               {user ? (
                 <>
-                  <div className="text-white mb-2">
+                  <div className="text-foreground mb-2">
                     {user.username === "admin" && user.role === "admin" ? (
                       <span className="text-xs bg-purple-500 px-2 py-1 rounded-full">admin</span>
                     ) : (
@@ -130,7 +148,7 @@ export default function Navbar() {
                   <div className="flex space-x-2">
                     <Button
                       variant="ghost"
-                      className="text-white hover:text-purple-400 flex-1 justify-start"
+                      className="text-foreground hover:text-purple-400 flex-1 justify-start"
                       onClick={() => {
                         logout()
                         setMobileMenuOpen(false)
@@ -170,7 +188,7 @@ export default function Navbar() {
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="text-gray-300 hover:text-white transition-colors relative group">
+    <Link href={href} className="text-gray-300 hover:text-foreground transition-colors relative group">
       {children}
       <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-purple-500 transition-all group-hover:w-full" />
     </Link>

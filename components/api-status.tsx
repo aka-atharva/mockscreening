@@ -15,7 +15,7 @@ export default function ApiStatus() {
       setMessage("Checking API connection...")
       setIsRetrying(true)
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api"
       console.log("Checking API status at:", apiUrl)
 
       // Add a timeout to the fetch request
@@ -31,16 +31,6 @@ export default function ApiStatus() {
       })
 
       clearTimeout(timeoutId)
-
-      // Check if the response is JSON
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text()
-        console.error("Received non-JSON response:", text.substring(0, 200) + "...")
-        setStatus("error")
-        setMessage("API returned non-JSON response. Server might be misconfigured.")
-        return
-      }
 
       if (response.ok) {
         setStatus("connected")
@@ -112,7 +102,6 @@ export default function ApiStatus() {
               </>
             )}
           </Button>
-          <span className="text-xs text-gray-400">You can still use the app with demo data</span>
         </div>
       </div>
     )

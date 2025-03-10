@@ -170,7 +170,7 @@ export default function DataDashboardPage() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-gray-400 text-xl mb-8"
+                className="text-foreground/70 dark:text-gray-400 text-xl mb-8"
               >
                 Monitor and visualize your data processing activities.
               </motion.p>
@@ -186,7 +186,7 @@ export default function DataDashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
                     <BarChart className="w-5 h-5 mr-2 text-purple-500" />
                     Data Processing Status
                   </h3>
@@ -225,7 +225,7 @@ export default function DataDashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
                     <Activity className="w-5 h-5 mr-2 text-purple-500" />
                     Recent Activities
                   </h3>
@@ -260,8 +260,8 @@ export default function DataDashboardPage() {
                           />
                         </div>
                         <div className="flex-1">
-                          <p className="text-white text-sm">{activity.action}</p>
-                          <p className="text-gray-400 text-xs">{activity.time}</p>
+                          <p className="text-foreground text-sm">{activity.action}</p>
+                          <p className="text-foreground/70 dark:text-gray-400 text-xs">{activity.time}</p>
                         </div>
                       </motion.div>
                     ))}
@@ -276,7 +276,7 @@ export default function DataDashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
                     <PieChart className="w-5 h-5 mr-2 text-purple-500" />
                     Data Distribution
                   </h3>
@@ -315,7 +315,7 @@ export default function DataDashboardPage() {
                     {dashboardData.chart_data.pie_chart.map((legend, index) => (
                       <div key={index} className="flex items-center">
                         <div className="w-3 h-3 rounded-full mr-1" style={{ backgroundColor: legend.color }} />
-                        <span className="text-gray-400 text-xs">{legend.label}</span>
+                        <span className="text-foreground/70 dark:text-gray-400 text-xs">{legend.label}</span>
                       </div>
                     ))}
                   </div>
@@ -329,7 +329,7 @@ export default function DataDashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
                     <LineChart className="w-5 h-5 mr-2 text-purple-500" />
                     Processing Trends
                   </h3>
@@ -395,11 +395,11 @@ export default function DataDashboardPage() {
                   <div className="flex justify-center space-x-4">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-purple-500 mr-1" />
-                      <span className="text-gray-400 text-xs">This Week</span>
+                      <span className="text-foreground/70 dark:text-gray-400 text-xs">This Week</span>
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-pink-500 mr-1" />
-                      <span className="text-gray-400 text-xs">Last Week</span>
+                      <span className="text-foreground/70 dark:text-gray-400 text-xs">Last Week</span>
                     </div>
                   </div>
 

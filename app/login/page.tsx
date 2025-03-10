@@ -6,18 +6,17 @@ import { useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { SparklesCore } from "@/components/sparkles"
 import { motion } from "framer-motion"
-import { Lock, Mail, AlertTriangle, ArrowLeft } from "lucide-react"
+import { Lock, Mail, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
-import ApiStatus from "@/components/api-status"
 import Image from "next/image"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const { login, isLoading, error, useFallbackMode } = useAuth()
+  const { login, isLoading, error } = useAuth()
   const router = useRouter()
   const [isLogoAnimating, setIsLogoAnimating] = useState(false)
 
@@ -27,7 +26,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+    <main className="min-h-screen bg-white dark:bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
       {/* Return to home button */}
       <Link
         href="/"
@@ -55,7 +54,7 @@ export default function LoginPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md p-8 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10"
+          className="w-full max-w-md p-8 bg-white/5 dark:bg-white/5 bg-black/5 backdrop-blur-sm rounded-lg border border-white/10 dark:border-white/10 border-black/10"
         >
           <div className="flex flex-col items-center mb-6">
             <motion.div
@@ -99,48 +98,20 @@ export default function LoginPage() {
             </span>
           </div>
 
-          <h1 className="text-2xl font-bold text-white text-center mb-6">Login</h1>
+          <h1 className="text-2xl font-bold text-foreground text-center mb-6">Login</h1>
 
           {error && (
             <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-2 rounded-md mb-4">
               <p className="font-medium">{error}</p>
-              {error.includes("non-JSON response") && (
-                <p className="text-sm mt-1">
-                  This usually happens when the API server is not running or is misconfigured. The application will use
-                  demo mode instead.
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="mb-4">
-            <ApiStatus />
-          </div>
-
-          {useFallbackMode && (
-            <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-200 px-4 py-2 rounded-md mb-4 flex items-start">
-              <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium">Using Demo Mode</p>
-                <p className="text-sm">API server is unavailable. You can use these demo credentials:</p>
-                <ul className="text-sm list-disc list-inside mt-1">
-                  <li>
-                    Admin: username <code>admin</code>, password <code>admin123</code>
-                  </li>
-                  <li>
-                    Researcher: username <code>researcher</code>, password <code>password</code>
-                  </li>
-                  <li>
-                    User: username <code>user</code>, password <code>password</code>
-                  </li>
-                </ul>
-              </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-foreground/70 dark:text-gray-300 mb-1"
+              >
                 Username
               </label>
               <div className="relative">
@@ -150,7 +121,7 @@ export default function LoginPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white"
+                  className="pl-10 bg-white/5 dark:bg-white/5 bg-black/5 border-white/10 dark:border-white/10 border-black/10 text-foreground"
                   placeholder="Enter your username"
                   required
                 />
@@ -158,7 +129,10 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-foreground/70 dark:text-gray-300 mb-1"
+              >
                 Password
               </label>
               <div className="relative">
@@ -168,7 +142,7 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white"
+                  className="pl-10 bg-white/5 dark:bg-white/5 bg-black/5 border-white/10 dark:border-white/10 border-black/10 text-foreground"
                   placeholder="Enter your password"
                   required
                 />
@@ -182,8 +156,20 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <p className="text-gray-400">
-              <Link href="/forgot-password" className="text-purple-400 hover:text-purple-300">
+              <Link
+                href="/forgot-password"
+                className="text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300"
+              >
                 Forgot your password?
+              </Link>
+            </p>
+            <p className="text-gray-400 mt-2">
+              Don't have an account?{" "}
+              <Link
+                href="/register"
+                className="text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300"
+              >
+                Register
               </Link>
             </p>
           </div>

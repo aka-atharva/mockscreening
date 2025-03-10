@@ -21,7 +21,7 @@ export default function Hero() {
       <div className="container mx-auto px-6 relative z-10 flex flex-col items-center">
         <div className="max-w-4xl mx-auto text-center mb-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4">
               Unlock the Power of Your Data
             </h1>
             <motion.p
@@ -112,17 +112,17 @@ function PlatformCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
       whileHover={{ y: -5 }}
-      className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden group"
+      className="bg-white/5 dark:bg-white/5 bg-black/5 backdrop-blur-sm rounded-xl border border-white/10 dark:border-white/10 border-black/10 overflow-hidden group"
     >
       <div className="p-5">
         <div className="flex items-center mb-4">
           <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${color} flex items-center justify-center mr-3`}>
             <Icon className="w-5 h-5 text-white" />
           </div>
-          <h3 className="text-xl font-bold text-white">{title}</h3>
+          <h3 className="text-xl font-bold text-foreground">{title}</h3>
         </div>
 
-        <p className="text-gray-400 mb-4 text-sm">{description}</p>
+        <p className="text-foreground mb-4">{description}</p>
 
         <ul className="space-y-1 mb-5">
           {features.map((feature, index) => (
@@ -134,14 +134,14 @@ function PlatformCard({
               className="flex items-start"
             >
               <div className={`w-1.5 h-1.5 rounded-full mt-1.5 mr-2 bg-gradient-to-r ${color}`} />
-              <span className="text-gray-300 text-xs">{feature}</span>
+              <span className="text-foreground text-xs">{feature}</span>
             </motion.li>
           ))}
         </ul>
 
         {requiresAuth && !isLoggedIn ? (
           <div className="flex flex-col space-y-2">
-            <p className="text-amber-400 text-xs">Login required to access</p>
+            <p className="text-amber-600 dark:text-amber-400 text-xs">Login required to access</p>
             <Link
               href="/login"
               className={`inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-gradient-to-r ${color} text-white text-sm font-medium transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20`}

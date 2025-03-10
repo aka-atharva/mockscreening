@@ -10,74 +10,74 @@ from .models import get_db, User
 from .auth import router as auth_router
 from .datapuur import router as datapuur_router
 from .kginsights import router as kginsights_router
-from .admin import router as admin_router # Add this line to include the admin router
+from .admin import router as admin_router
 
 app = FastAPI(title="Research AI API")
 
 # Configure CORS
 app.add_middleware(
-  CORSMiddleware,
-  allow_origins=["*"],  # In production, replace with specific origins
-  allow_credentials=True,
-  allow_methods=["*"],
-  allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
 app.include_router(auth_router)
 app.include_router(datapuur_router)
 app.include_router(kginsights_router)
-app.include_router(admin_router) # Then add this line where the other routers are included
+app.include_router(admin_router)
 
 # Health check endpoint
 @app.get("/api/health")
 async def health_check():
-  return {"status": "ok"}
+    return {"status": "ok"}
 
 # Create initial admin user if it doesn't exist
 @app.on_event("startup")
 async def startup_event():
-  db = next(get_db())
-  admin_user = db.query(User).filter(User.username == "admin").first()
-  if not admin_user:
-      hashed_password = User.get_password_hash("admin123")
-      admin = User(
-          username="admin",
-          email="admin@example.com",
-          hashed_password=hashed_password,
-          role="admin"
-      )
-      db.add(admin)
-      db.commit()
-      print("Created initial admin user")
-      
-  # Create researcher user if it doesn't exist
-  researcher_user = db.query(User).filter(User.username == "researcher").first()
-  if not researcher_user:
-      hashed_password = User.get_password_hash("password")
-      researcher = User(
-          username="researcher",
-          email="researcher@example.com",
-          hashed_password=hashed_password,
-          role="researcher"
-      )
-      db.add(researcher)
-      db.commit()
-      print("Created initial researcher user")
-      
-  # Create regular user if it doesn't exist
-  regular_user = db.query(User).filter(User.username == "user").first()
-  if not regular_user:
-      hashed_password = User.get_password_hash("password")
-      user = User(
-          username="user",
-          email="user@example.com",
-          hashed_password=hashed_password,
-          role="user"
-      )
-      db.add(user)
-      db.commit()
-      print("Created initial regular user")
+    db = next(get_db())
+    admin_user = db.query(User).filter(User.username == "admin").first()
+    if not admin_user:
+        hashed_password = User.get_password_hash("admin123")
+        admin = User(
+            username="admin",
+            email="admin@example.com",
+            hashed_password=hashed_password,
+            role="admin"
+        )
+        db.add(admin)
+        db.commit()
+        print("Created initial admin user")
+    
+    # Create researcher user if it doesn't exist
+    researcher_user = db.query(User).filter(User.username == "researcher").first()
+    if not researcher_user:
+        hashed_password = User.get_password_hash("password")
+        researcher = User(
+            username="researcher",
+            email="researcher@example.com",
+            hashed_password=hashed_password,
+            role="researcher"
+        )
+        db.add(researcher)
+        db.commit()
+        print("Created initial researcher user")
+    
+    # Create regular user if it doesn't exist
+    regular_user = db.query(User).filter(User.username == "user").first()
+    if not regular_user:
+        hashed_password = User.get_password_hash("password")
+        user = User(
+            username="user",
+            email="user@example.com",
+            hashed_password=hashed_password,
+            role="user"
+        )
+        db.add(user)
+        db.commit()
+        print("Created initial regular user")
 
 # Mount static files directory if it exists
 static_dir = Path(__file__).parent / "static"

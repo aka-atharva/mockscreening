@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useMousePosition } from "@/lib/hooks/use-mouse-position"
+import { useTheme } from "@/lib/theme-context"
 
 interface SparklesProps {
   id?: string
@@ -25,6 +26,15 @@ export const SparklesCore = ({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mousePosition = useMousePosition()
   const [dimensions, setDimensions] = useState({ width: 1200, height: 800 })
+  const { theme } = useTheme()
+
+  // Determine particle color based on theme if not explicitly provided
+  const effectiveParticleColor =
+    particleColor === "#FFFFFF" || particleColor === "var(--foreground)"
+      ? theme === "dark"
+        ? "#FFFFFF"
+        : "#000000"
+      : particleColor
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -83,7 +93,7 @@ export const SparklesCore = ({
 
       draw() {
         if (!ctx) return
-        ctx.fillStyle = particleColor
+        ctx.fillStyle = effectiveParticleColor
         ctx.beginPath()
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
         ctx.fill()
@@ -130,7 +140,7 @@ export const SparklesCore = ({
       window.removeEventListener("resize", handleResize)
       cancelAnimationFrame(animationFrameId)
     }
-  }, [maxSize, minSize, particleColor, particleDensity, mousePosition.x, mousePosition.y])
+  }, [maxSize, minSize, effectiveParticleColor, particleDensity, mousePosition.x, mousePosition.y])
 
   return (
     <canvas

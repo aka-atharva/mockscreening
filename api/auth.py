@@ -8,11 +8,12 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 import secrets
 import uuid
+import os
 
 from .models import User, get_db, Base
 
-# JWT Configuration
-SECRET_KEY = "YOUR_SECRET_KEY_HERE"  # In production, use a secure random key
+# Generate a secure random key for JWT
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", secrets.token_hex(32))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 from .models import User, get_db
 from .auth import get_current_active_user, has_role
-from pydantic import BaseModel
 
 # Router
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -31,8 +31,37 @@ class SystemStats(BaseModel):
     database_size: str
 
 class UpdateUserRequest(BaseModel):
-    is_active: bool = None
-    role: str = None
+    is_active: Optional[bool] = None
+    role: Optional[str] = None
+    email: Optional[str] = None
+    username: Optional[str] = None
+
+# Add CreateUserRequest model after UpdateUserRequest
+class CreateUserRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str = "user"
+    is_active: bool = True
+
+class SystemSettingUpdate(BaseModel):
+    maintenance_mode: Optional[bool] = None
+    debug_mode: Optional[bool] = None
+    api_rate_limiting: Optional[bool] = None
+
+class SystemSettings(BaseModel):
+    maintenance_mode: bool
+    debug_mode: bool
+    api_rate_limiting: bool
+    last_backup: str
+
+# In-memory storage for system settings (in a real app, this would be in the database)
+system_settings = {
+    "maintenance_mode": False,
+    "debug_mode": True,
+    "api_rate_limiting": True,
+    "last_backup": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
+}
 
 # API Routes
 @router.get("/users", response_model=List[UserResponse])
@@ -40,6 +69,42 @@ async def get_all_users(current_user: User = Depends(has_role("admin")), db: Ses
     """Get all users in the system (admin only)"""
     users = db.query(User).all()
     return users
+
+# Add the POST endpoint for creating users after the get_all_users endpoint
+@router.post("/users", response_model=UserResponse)
+async def create_user(
+    user_data: CreateUserRequest, 
+    current_user: User = Depends(has_role("admin")), 
+    db: Session = Depends(get_db)
+):
+    """Create a new user (admin only)"""
+    # Check if username exists
+    db_user = db.query(User).filter(User.username == user_data.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    # Check if email exists
+    db_email = db.query(User).filter(User.email == user_data.email).first()
+    if db_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate role
+    if user_data.role not in ["admin", "researcher", "user"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    
+    # Create new user
+    hashed_password = User.get_password_hash(user_data.password)
+    db_user = User(
+        username=user_data.username,
+        email=user_data.email,
+        hashed_password=hashed_password,
+        role=user_data.role,
+        is_active=user_data.is_active
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 @router.get("/users/{user_id}", response_model=UserResponse)
 async def get_user(user_id: int, current_user: User = Depends(has_role("admin")), db: Session = Depends(get_db)):
@@ -76,6 +141,20 @@ async def update_user(
         if user_data.role not in ["admin", "researcher", "user"]:
             raise HTTPException(status_code=400, detail="Invalid role")
         user.role = user_data.role
+    
+    if user_data.email:
+        # Check if email is already taken by another user
+        existing_user = db.query(User).filter(User.email == user_data.email, User.id != user_id).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user.email = user_data.email
+    
+    if user_data.username:
+        # Check if username is already taken by another user
+        existing_user = db.query(User).filter(User.username == user_data.username, User.id != user_id).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username already in use")
+        user.username = user_data.username
     
     db.commit()
     db.refresh(user)
@@ -166,4 +245,68 @@ async def get_recent_activity(current_user: User = Depends(has_role("admin"))):
             "details": "Password reset completed"
         }
     ]
+
+@router.get("/settings", response_model=SystemSettings)
+async def get_system_settings(current_user: User = Depends(has_role("admin"))):
+    """Get system settings (admin only)"""
+    return system_settings
+
+@router.put("/settings", response_model=SystemSettings)
+async def update_system_settings(
+    settings: SystemSettingUpdate,
+    current_user: User = Depends(has_role("admin"))
+):
+    """Update system settings (admin only)"""
+    if settings.maintenance_mode is not None:
+        system_settings["maintenance_mode"] = settings.maintenance_mode
+    
+    if settings.debug_mode is not None:
+        system_settings["debug_mode"] = settings.debug_mode
+    
+    if settings.api_rate_limiting is not None:
+        system_settings["api_rate_limiting"] = settings.api_rate_limiting
+    
+    return system_settings
+
+@router.post("/backup", status_code=200)
+async def run_backup(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(has_role("admin"))
+):
+    """Run a database backup (admin only)"""
+    # In a real system, you would run an actual backup process
+    # For this demo, we'll just update the last backup time
+    
+    def perform_backup():
+        # Simulate a backup process
+        import time
+        time.sleep(2)  # Simulate a 2-second backup process
+        system_settings["last_backup"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    background_tasks.add_task(perform_backup)
+    return {"message": "Backup started"}
+
+@router.post("/export-data", status_code=200)
+async def export_system_data(current_user: User = Depends(has_role("admin"))):
+    """Export system data (admin only)"""
+    # In a real system, you would generate and return actual export data
+    # For this demo, we'll just return a success message
+    return {"message": "Data export initiated", "download_url": "/api/admin/download-export"}
+
+@router.post("/cleanup-data", status_code=200)
+async def cleanup_data(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(has_role("admin"))
+):
+    """Clean up old or unused data (admin only)"""
+    # In a real system, you would run an actual cleanup process
+    # For this demo, we'll just return a success message
+    
+    def perform_cleanup():
+        # Simulate a cleanup process
+        import time
+        time.sleep(3)  # Simulate a 3-second cleanup process
+    
+    background_tasks.add_task(perform_cleanup)
+    return {"message": "Data cleanup started"}
 

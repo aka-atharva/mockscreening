@@ -33,12 +33,12 @@ export default function DataPuurSidebar() {
   ]
 
   return (
-    <div className="w-64 h-[calc(100vh-76px)] border-r border-white/10 p-4">
+    <div className="w-64 h-[calc(100vh-76px)] border-r border-black/10 dark:border-white/10 p-4 bg-background/50">
       <motion.h2
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-white font-medium text-lg mb-4 px-4"
+        className="text-foreground font-medium text-lg mb-4 px-4"
       >
         DataPuur Menu
       </motion.h2>
@@ -57,7 +57,9 @@ export default function DataPuurSidebar() {
                 href={item.href}
                 className={cn(
                   "flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200",
-                  isActive ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white hover:bg-white/5",
+                  isActive
+                    ? "bg-purple-600 text-white"
+                    : "text-foreground/70 dark:text-gray-400 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5",
                 )}
               >
                 <item.icon
