@@ -52,7 +52,7 @@ export default function DataDashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+      <main className="min-h-screen bg-background antialiased relative overflow-hidden">
         <div className="h-full w-full absolute inset-0 z-0">
           <SparklesCore
             id="tsparticlesfullpage"
@@ -61,7 +61,7 @@ export default function DataDashboardPage() {
             maxSize={1.4}
             particleDensity={100}
             className="w-full h-full"
-            particleColor="#FFFFFF"
+            particleColor="var(--foreground)"
           />
         </div>
 
@@ -87,7 +87,7 @@ export default function DataDashboardPage() {
   // Only show the full error page if we have an error and no data
   if (error && !dashboardData) {
     return (
-      <main className="min-h-screen bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+      <main className="min-h-screen bg-background antialiased relative overflow-hidden">
         <div className="h-full w-full absolute inset-0 z-0">
           <SparklesCore
             id="tsparticlesfullpage"
@@ -96,7 +96,7 @@ export default function DataDashboardPage() {
             maxSize={1.4}
             particleDensity={100}
             className="w-full h-full"
-            particleColor="#FFFFFF"
+            particleColor="var(--foreground)"
           />
         </div>
 
@@ -108,11 +108,11 @@ export default function DataDashboardPage() {
 
             <div className="flex-1 p-8">
               <div className="max-w-4xl mx-auto text-center">
-                <h1 className="text-4xl font-bold text-white mb-6">Error</h1>
-                <p className="text-red-400 text-xl mb-8">{error}</p>
+                <h1 className="text-4xl font-bold text-foreground mb-6">Error</h1>
+                <p className="text-destructive text-xl mb-8">{error}</p>
                 <button
                   onClick={() => window.location.reload()}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 rounded-lg"
                 >
                   Retry
                 </button>
@@ -129,7 +129,7 @@ export default function DataDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+    <main className="min-h-screen bg-background antialiased relative overflow-hidden">
       {/* Ambient background with moving particles */}
       <div className="h-full w-full absolute inset-0 z-0">
         <SparklesCore
@@ -139,7 +139,7 @@ export default function DataDashboardPage() {
           maxSize={1.4}
           particleDensity={100}
           className="w-full h-full"
-          particleColor="#FFFFFF"
+          particleColor="var(--foreground)"
         />
       </div>
 
@@ -151,7 +151,7 @@ export default function DataDashboardPage() {
 
           <div className="flex-1 p-8">
             {showErrorBanner && (
-              <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-200 px-4 py-2 rounded-md mb-4">
+              <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-700 dark:text-yellow-200 px-4 py-2 rounded-md mb-4">
                 <p>{error} - Using demo data instead.</p>
               </div>
             )}
@@ -161,7 +161,7 @@ export default function DataDashboardPage() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-4xl font-bold text-white mb-6"
+                className="text-4xl font-bold text-foreground mb-6"
               >
                 Data Dashboard
               </motion.h1>
@@ -170,7 +170,7 @@ export default function DataDashboardPage() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-foreground/70 dark:text-gray-400 text-xl mb-8"
+                className="text-muted-foreground text-xl mb-8"
               >
                 Monitor and visualize your data processing activities.
               </motion.p>
@@ -184,10 +184,10 @@ export default function DataDashboardPage() {
                 <motion.div
                   variants={item}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
+                  className="bg-card backdrop-blur-sm p-6 rounded-lg border border-border h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
-                    <BarChart className="w-5 h-5 mr-2 text-purple-500" />
+                  <h3 className="text-xl font-semibold text-card-foreground mb-4 flex items-center">
+                    <BarChart className="w-5 h-5 mr-2 text-primary" />
                     Data Processing Status
                   </h3>
 
@@ -202,13 +202,13 @@ export default function DataDashboardPage() {
                           delay: index * 0.1,
                           ease: "easeOut",
                         }}
-                        className="w-8 bg-gradient-to-t from-purple-600 to-pink-500 rounded-t-md relative group"
+                        className="w-8 bg-gradient-to-t from-primary/60 to-primary rounded-t-md relative group"
                         whileHover={{ y: -5 }}
                       >
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           whileHover={{ opacity: 1, y: 0 }}
-                          className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-black text-xs py-1 px-2 rounded"
+                          className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-card text-card-foreground text-xs py-1 px-2 rounded border border-border"
                         >
                           {height}%
                         </motion.div>
@@ -217,16 +217,16 @@ export default function DataDashboardPage() {
                   </div>
 
                   {/* Animated gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.div>
 
                 <motion.div
                   variants={item}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
+                  className="bg-card backdrop-blur-sm p-6 rounded-lg border border-border h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
-                    <Activity className="w-5 h-5 mr-2 text-purple-500" />
+                  <h3 className="text-xl font-semibold text-card-foreground mb-4 flex items-center">
+                    <Activity className="w-5 h-5 mr-2 text-primary" />
                     Recent Activities
                   </h3>
 
@@ -237,12 +237,12 @@ export default function DataDashboardPage() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 + 0.5 }}
-                        className="flex items-center p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        className="flex items-center p-2 rounded-lg hover:bg-accent transition-colors"
                       >
                         <div
                           className={`w-2 h-2 rounded-full mr-3 ${
                             activity.status === "success"
-                              ? "bg-green-500"
+                              ? "bg-violet-500"
                               : activity.status === "processing"
                                 ? "bg-blue-500"
                                 : activity.status === "pending"
@@ -260,8 +260,8 @@ export default function DataDashboardPage() {
                           />
                         </div>
                         <div className="flex-1">
-                          <p className="text-foreground text-sm">{activity.action}</p>
-                          <p className="text-foreground/70 dark:text-gray-400 text-xs">{activity.time}</p>
+                          <p className="text-card-foreground text-sm">{activity.action}</p>
+                          <p className="text-muted-foreground text-xs">{activity.time}</p>
                         </div>
                       </motion.div>
                     ))}
@@ -274,10 +274,10 @@ export default function DataDashboardPage() {
                 <motion.div
                   variants={item}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
+                  className="bg-card backdrop-blur-sm p-6 rounded-lg border border-border h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
-                    <PieChart className="w-5 h-5 mr-2 text-purple-500" />
+                  <h3 className="text-xl font-semibold text-card-foreground mb-4 flex items-center">
+                    <PieChart className="w-5 h-5 mr-2 text-primary" />
                     Data Distribution
                   </h3>
 
@@ -305,8 +305,8 @@ export default function DataDashboardPage() {
                           />
                         )
                       })}
-                      <div className="absolute inset-4 bg-black/90 rounded-full flex items-center justify-center">
-                        <span className="text-white text-sm font-medium">100%</span>
+                      <div className="absolute inset-4 bg-card rounded-full flex items-center justify-center border border-border">
+                        <span className="text-card-foreground text-sm font-medium">100%</span>
                       </div>
                     </div>
                   </div>
@@ -315,22 +315,22 @@ export default function DataDashboardPage() {
                     {dashboardData.chart_data.pie_chart.map((legend, index) => (
                       <div key={index} className="flex items-center">
                         <div className="w-3 h-3 rounded-full mr-1" style={{ backgroundColor: legend.color }} />
-                        <span className="text-foreground/70 dark:text-gray-400 text-xs">{legend.label}</span>
+                        <span className="text-muted-foreground text-xs">{legend.label}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Animated gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.div>
 
                 <motion.div
                   variants={item}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-white/5 backdrop-blur-sm p-6 rounded-lg border border-white/10 h-64 relative overflow-hidden group"
+                  className="bg-card backdrop-blur-sm p-6 rounded-lg border border-border h-64 relative overflow-hidden group"
                 >
-                  <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center">
-                    <LineChart className="w-5 h-5 mr-2 text-purple-500" />
+                  <h3 className="text-xl font-semibold text-card-foreground mb-4 flex items-center">
+                    <LineChart className="w-5 h-5 mr-2 text-primary" />
                     Processing Trends
                   </h3>
 
@@ -342,7 +342,7 @@ export default function DataDashboardPage() {
                           .map((value, i) => `L${i * 60},${100 - value}`)
                           .join(" ")}`}
                         fill="none"
-                        stroke="#8B5CF6"
+                        stroke="hsl(var(--primary))"
                         strokeWidth="3"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 1 }}
@@ -369,7 +369,7 @@ export default function DataDashboardPage() {
                           cx={i * 60}
                           cy={100 - value}
                           r="4"
-                          fill="#8B5CF6"
+                          fill="hsl(var(--primary))"
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ delay: i * 0.1 + 2 }}
@@ -394,17 +394,17 @@ export default function DataDashboardPage() {
 
                   <div className="flex justify-center space-x-4">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-purple-500 mr-1" />
-                      <span className="text-foreground/70 dark:text-gray-400 text-xs">This Week</span>
+                      <div className="w-3 h-3 rounded-full bg-primary mr-1" />
+                      <span className="text-muted-foreground text-xs">This Week</span>
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-pink-500 mr-1" />
-                      <span className="text-foreground/70 dark:text-gray-400 text-xs">Last Week</span>
+                      <span className="text-muted-foreground text-xs">Last Week</span>
                     </div>
                   </div>
 
                   {/* Animated gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.div>
               </motion.div>
             </div>

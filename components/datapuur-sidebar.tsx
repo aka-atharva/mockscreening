@@ -33,7 +33,7 @@ export default function DataPuurSidebar() {
   ]
 
   return (
-    <div className="w-64 h-[calc(100vh-76px)] border-r border-black/10 dark:border-white/10 p-4 bg-background/50">
+    <div className="w-64 h-[calc(100vh-76px)] border-r border-border p-4 bg-card/50">
       <motion.h2
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -56,10 +56,10 @@ export default function DataPuurSidebar() {
               <Link
                 href={item.href}
                 className={cn(
-                  "flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200",
+                  "flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 group",
                   isActive
-                    ? "bg-purple-600 text-white"
-                    : "text-foreground/70 dark:text-gray-400 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5",
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
                 )}
               >
                 <item.icon
@@ -69,7 +69,7 @@ export default function DataPuurSidebar() {
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-indicator"
-                    className="absolute left-0 w-1 h-8 bg-white rounded-r-full"
+                    className="absolute left-0 w-1 h-8 bg-violet-600 rounded-r-full"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}

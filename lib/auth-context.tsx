@@ -194,9 +194,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    // Set a flag in sessionStorage to indicate we're logging out
+    sessionStorage.setItem("isLoggingOut", "true")
+
+    // Clear auth data
     localStorage.removeItem("token")
     localStorage.removeItem("user")
     setUser(null)
+
+    // Navigate to home page
     router.push("/")
   }
 

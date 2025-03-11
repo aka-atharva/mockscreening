@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
       }
 
       // Call the API to request password reset
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
       const response = await fetch(`${apiUrl}/auth/forgot-password`, {
         method: "POST",
         headers: {
@@ -152,7 +152,7 @@ export default function ForgotPasswordPage() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full bg-violet-600 hover:bg-violet-700 text-white btn-glow"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? "Sending..." : "Send Reset Link"}

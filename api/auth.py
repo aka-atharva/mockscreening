@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, String, DateTime
@@ -9,8 +9,9 @@ from pydantic import BaseModel, EmailStr
 import secrets
 import uuid
 import os
+import logging
 
-from .models import User, get_db, Base
+from .models import User, get_db, Base, ActivityLog
 
 # Generate a secure random key for JWT
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", secrets.token_hex(32))
@@ -134,6 +135,29 @@ def has_role(required_role: str):
         return current_user
     return role_checker
 
+# Add this function to the auth.py file, near the has_role function
+
+def validate_role(role_name: str, db: Session):
+    """
+    Validates if a role exists or creates it if it doesn't
+    """
+    from .models import Role
+    
+    # Check if role exists
+    db_role = db.query(Role).filter(Role.name == role_name).first()
+    
+    # If role doesn't exist, create it
+    if not db_role:
+        new_role = Role(
+            name=role_name,
+            description=f"Auto-created role: {role_name}"
+        )
+        db.add(new_role)
+        db.commit()
+        return True
+    
+    return True
+
 # Password reset functions
 def generate_password_reset_token(db: Session, email: str):
     # Delete any existing tokens for this email
@@ -177,16 +201,62 @@ def send_password_reset_email(email: str, token: str):
     reset_link = f"http://localhost:3000/reset-password?token={token}"
     print(f"Password reset link for {email}: {reset_link}")
 
+# Add logging functionality (keep the rest of the file the same)
+def log_activity(db, username, action, details=None, ip_address=None, user_agent=None):
+    """Record user activity in the database"""
+    try:
+        activity = ActivityLog(
+            username=username,
+            action=action,
+            details=details,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        db.add(activity)
+        db.commit()
+    except Exception as e:
+        logging.error(f"Failed to log activity: {e}")
+        db.rollback()
+
 # Endpoints
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db),
+    request: Request = None
+):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        # Log failed login attempt
+        ip = request.client.host if request else None
+        user_agent = request.headers.get("user-agent") if request else None
+        log_activity(
+            db=db,
+            username=form_data.username,
+            action="Failed login attempt",
+            details="Invalid credentials",
+            ip_address=ip,
+            user_agent=user_agent
+        )
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Log the successful login
+    ip = request.client.host if request else None
+    user_agent = request.headers.get("user-agent") if request else None
+    log_activity(
+        db=db,
+        username=user.username,
+        action="User login",
+        details="Successful login",
+        ip_address=ip,
+        user_agent=user_agent
+    )
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires

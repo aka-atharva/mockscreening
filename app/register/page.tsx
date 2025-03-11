@@ -155,7 +155,11 @@ export default function RegisterPage() {
               {passwordError && <p className="text-red-400 text-sm mt-1">{passwordError}</p>}
             </div>
 
-            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white btn-glow"
+              disabled={isLoading}
+            >
               {isLoading ? "Creating Account..." : "Register"}
             </Button>
           </form>

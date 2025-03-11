@@ -18,9 +18,18 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
   const pathname = usePathname()
 
   useEffect(() => {
+    // Check for logout flag in sessionStorage
+    const isLoggingOut = sessionStorage.getItem("isLoggingOut") === "true"
+
     if (!isLoading && !user) {
-      // Redirect to login if not authenticated
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      if (isLoggingOut) {
+        // If logging out, redirect to home and clear the flag
+        sessionStorage.removeItem("isLoggingOut")
+        router.push("/")
+      } else {
+        // Normal case - redirect to login if not authenticated
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      }
     } else if (!isLoading && user && requiredRole) {
       // Check role permissions
       if (

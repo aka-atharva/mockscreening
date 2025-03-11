@@ -112,17 +112,17 @@ function PlatformCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
       whileHover={{ y: -5 }}
-      className="bg-white/5 dark:bg-white/5 bg-black/5 backdrop-blur-sm rounded-xl border border-white/10 dark:border-white/10 border-black/10 overflow-hidden group"
+      className="bg-card/80 backdrop-blur-sm rounded-xl border border-border overflow-hidden group"
     >
       <div className="p-5">
         <div className="flex items-center mb-4">
           <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${color} flex items-center justify-center mr-3`}>
             <Icon className="w-5 h-5 text-white" />
           </div>
-          <h3 className="text-xl font-bold text-foreground">{title}</h3>
+          <h3 className="text-xl font-bold text-card-foreground">{title}</h3>
         </div>
 
-        <p className="text-foreground mb-4">{description}</p>
+        <p className="text-card-foreground mb-4">{description}</p>
 
         <ul className="space-y-1 mb-5">
           {features.map((feature, index) => (
@@ -134,7 +134,7 @@ function PlatformCard({
               className="flex items-start"
             >
               <div className={`w-1.5 h-1.5 rounded-full mt-1.5 mr-2 bg-gradient-to-r ${color}`} />
-              <span className="text-foreground text-xs">{feature}</span>
+              <span className="text-muted-foreground text-xs">{feature}</span>
             </motion.li>
           ))}
         </ul>
@@ -162,7 +162,7 @@ function PlatformCard({
       </div>
 
       {/* Animated border on hover */}
-      <div className="h-1 w-full bg-gradient-to-r from-transparent via-white/20 to-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
+      <div className="h-1 w-full bg-gradient-to-r from-transparent via-border to-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
     </motion.div>
   )
 }

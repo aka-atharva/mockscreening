@@ -20,9 +20,9 @@ if __name__ == "__main__":
     
     print(f"Starting server on port {port}")
     if has_static:
-        print("Frontend will be served at http://localhost:8000")
-    print("API will be available at http://localhost:8000/api")
+        print("Frontend will be served at http://localhost:8080")
+    print("API will be available at http://localhost:8080/api")
     
     # Run the FastAPI app with uvicorn
-    uvicorn.run("api.main:app", host="192.168.29.166", port=8080, reload=True)
+    uvicorn.run("api.main:app", host="72.104.129.10", port="9090", reload=True)
 
