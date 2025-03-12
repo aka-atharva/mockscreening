@@ -36,10 +36,10 @@ export default function RegisterPage() {
       {/* Return to home button */}
       <Link
         href="/"
-        className="absolute top-6 left-6 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200"
+        className="absolute top-6 left-6 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors duration-200"
         aria-label="Return to home page"
       >
-        <ArrowLeft className="w-5 h-5 text-white" />
+        <ArrowLeft className="w-5 h-5 text-black dark:text-white" />
       </Link>
 
       {/* Ambient background with moving particles */}

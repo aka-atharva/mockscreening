@@ -24,5 +24,5 @@ if __name__ == "__main__":
     print("API will be available at http://localhost:8080/api")
     
     # Run the FastAPI app with uvicorn
-    uvicorn.run("api.main:app", host="72.104.129.10", port="9090", reload=True)
+    uvicorn.run("api.main:app", host="localhost", port=port, reload=True)
 

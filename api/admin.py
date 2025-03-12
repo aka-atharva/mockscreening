@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional
+from sqlalchemy import desc, func
+from typing import List, Optional
 from datetime import datetime, timedelta
-from pydantic import BaseModel
+import pytz
+from pydantic import BaseModel, ConfigDict
+import json
 
-from .models import User, ActivityLog, get_db, Role
-from .auth import get_current_active_user, has_role, log_activity
+from .models import get_db, User, ActivityLog, Role
+from .auth import get_current_user, has_role, log_activity
 
 # Router
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -17,10 +20,26 @@ class UserResponse(BaseModel):
     email: str
     role: str
     is_active: bool
-    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)  # Updated from orm_mode
 
-    class Config:
-        orm_mode = True
+class ActivityLogResponse(BaseModel):
+    id: int
+    username: str
+    action: str
+    details: Optional[str] = None
+    timestamp: datetime
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    page_url: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)  # Updated from orm_mode
+
+class SystemStatsResponse(BaseModel):
+    total_users: int
+    active_users: int
+    total_activity_logs: int
+    recent_activity: int  # Activity in the last 24 hours
 
 class SystemStats(BaseModel):
     total_users: int
@@ -55,86 +74,75 @@ class SystemSettings(BaseModel):
     api_rate_limiting: bool
     last_backup: str
 
-# Add ActivityLogResponse model
-class ActivityLogResponse(BaseModel):
-    id: int
-    username: str
-    action: str
-    details: Optional[str] = None
-    timestamp: datetime
-    ip_address: Optional[str] = None
-
-    class Config:
-        orm_mode = True
-
 # In-memory storage for system settings (in a real app, this would be in the database)
+ist = pytz.timezone('Asia/Kolkata')
 system_settings = {
-    "maintenance_mode": False,
-    "debug_mode": True,
-    "api_rate_limiting": True,
-    "last_backup": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
+   "maintenance_mode": False,
+   "debug_mode": True,
+   "api_rate_limiting": True,
+   "last_backup": (datetime.now(ist) - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
 }
 
 # API Routes
+# User management endpoints
 @router.get("/users", response_model=List[UserResponse])
-async def get_all_users(current_user: User = Depends(has_role("admin")), db: Session = Depends(get_db)):
-    """Get all users in the system (admin only)"""
+async def get_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
+):
     users = db.query(User).all()
     return users
 
 # Add the POST endpoint for creating users after the get_all_users endpoint
 @router.post("/users", response_model=UserResponse)
 async def create_user(
-  user_data: CreateUserRequest, 
-  current_user: User = Depends(has_role("admin")), 
-  db: Session = Depends(get_db),
-  request: Request = None
+    user_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
 ):
-  """Create a new user (admin only)"""
-  # Check if username exists
-  db_user = db.query(User).filter(User.username == user_data.username).first()
-  if db_user:
-      raise HTTPException(status_code=400, detail="Username already registered")
-  
-  # Check if email exists
-  db_email = db.query(User).filter(User.email == user_data.email).first()
-  if db_email:
-      raise HTTPException(status_code=400, detail="Email already registered")
-  
-  # Validate role
-  if user_data.role not in ["admin", "researcher", "user"]:
-      raise HTTPException(status_code=400, detail="Invalid role")
-  
-  # Create new user
-  hashed_password = User.get_password_hash(user_data.password)
-  db_user = User(
-      username=user_data.username,
-      email=user_data.email,
-      hashed_password=hashed_password,
-      role=user_data.role,
-      is_active=user_data.is_active
-  )
-  db.add(db_user)
-  db.commit()
-  db.refresh(db_user)
-  
-  # Log the user creation activity
-  ip = request.client.host if request else None
-  user_agent = request.headers.get("user-agent") if request else None
-  log_activity(
-    db=db,
-    username=current_user.username,
-    action="User created",
-    details=f"Created user '{user_data.username}' with role '{user_data.role}'",
-    ip_address=ip,
-    user_agent=user_agent
-  )
-  
-  return db_user
+    # Check if username exists
+    existing_user = db.query(User).filter(User.username == user_data["username"]).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Check if email exists
+    existing_email = db.query(User).filter(User.email == user_data["email"]).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already exists")
+    
+    # Validate role
+    from .auth import validate_role
+    validate_role(user_data["role"], db)
+    
+    # Create new user
+    hashed_password = User.get_password_hash(user_data["password"])
+    new_user = User(
+        username=user_data["username"],
+        email=user_data["email"],
+        hashed_password=hashed_password,
+        role=user_data["role"],
+        is_active=user_data.get("is_active", True)
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Log the activity
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="User created",
+        details=f"Created user {new_user.username} (ID: {new_user.id})"
+    )
+    
+    return new_user
 
 @router.get("/users/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int, current_user: User = Depends(has_role("admin")), db: Session = Depends(get_db)):
-    """Get a specific user by ID (admin only)"""
+async def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
+):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -142,284 +150,385 @@ async def get_user(user_id: int, current_user: User = Depends(has_role("admin"))
 
 @router.put("/users/{user_id}", response_model=UserResponse)
 async def update_user(
-  user_id: int, 
-  user_data: UpdateUserRequest, 
-  current_user: User = Depends(has_role("admin")), 
-  db: Session = Depends(get_db),
-  request: Request = None
+    user_id: int,
+    user_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
 ):
-  """Update a user's role or active status (admin only)"""
-  user = db.query(User).filter(User.id == user_id).first()
-  if not user:
-      raise HTTPException(status_code=404, detail="User not found")
-  
-  # Prevent admins from demoting themselves
-  if user.id == current_user.id and user_data.role and user_data.role != "admin":
-      raise HTTPException(
-          status_code=400, 
-          detail="Admins cannot demote themselves"
-      )
-  
-  # Create a changes list to log what was changed
-  changes = []
-  
-  # Update user fields if provided
-  if user_data.is_active is not None and user.is_active != user_data.is_active:
-      old_status = "active" if user.is_active else "inactive"
-      new_status = "active" if user_data.is_active else "inactive"
-      user.is_active = user_data.is_active
-      changes.append(f"status from {old_status} to {new_status}")
-  
-  if user_data.role and user.role != user_data.role:
-    # Remove or modify this validation to accept custom roles
-    # Instead of restricting to only ["admin", "researcher", "user"]
-    # We'll check if the role exists in our system
-    db_roles = db.query(Role).all()
-    role_names = [r.name for r in db_roles] if db_roles else ["admin", "researcher", "user"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     
-    if user_data.role not in role_names:
-        # If the role doesn't exist yet, create it
-        new_role = Role(name=user_data.role, description=f"Custom role: {user_data.role}")
-        db.add(new_role)
-        db.commit()
+    # Update user fields
+    if "username" in user_data:
+        user.username = user_data["username"]
+    if "email" in user_data:
+        user.email = user_data["email"]
+    if "role" in user_data:
+        # Validate role
+        from .auth import validate_role
+        validate_role(user_data["role"], db)
+        user.role = user_data["role"]
+    if "is_active" in user_data:
+        user.is_active = user_data["is_active"]
     
-    changes.append(f"role from '{user.role}' to '{user_data.role}'")
-    user.role = user_data.role
-  
-  if user_data.email and user.email != user_data.email:
-      # Check if email is already taken by another user
-      existing_user = db.query(User).filter(User.email == user_data.email, User.id != user_id).first()
-      if existing_user:
-          raise HTTPException(status_code=400, detail="Email already in use")
-      changes.append(f"email from '{user.email}' to '{user_data.email}'")
-      user.email = user_data.email
-  
-  if user_data.username and user.username != user_data.username:
-      # Check if username is already taken by another user
-      existing_user = db.query(User).filter(User.username == user_data.username, User.id != user_id).first()
-      if existing_user:
-          raise HTTPException(status_code=400, detail="Username already in use")
-      changes.append(f"username from '{user.username}' to '{user_data.username}'")
-      user.username = user_data.username
-  
-  db.commit()
-  db.refresh(user)
-  
-  # Log the user update activity
-  ip = request.client.host if request else None
-  user_agent = request.headers.get("user-agent") if request else None
-  
-  changes_text = ", ".join(changes) if changes else "no changes made"
-  log_activity(
-    db=db,
-    username=current_user.username,
-    action="User updated",
-    details=f"Updated user ID {user_id}: {changes_text}",
-    ip_address=ip,
-    user_agent=user_agent
-  )
-  
-  return user
+    db.commit()
+    db.refresh(user)
+    
+    # Log the activity
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="User updated",
+        details=f"Updated user {user.username} (ID: {user.id})"
+    )
+    
+    return user
 
-@router.delete("/users/{user_id}", status_code=204)
+@router.delete("/users/{user_id}")
 async def delete_user(
-  user_id: int, 
-  current_user: User = Depends(has_role("admin")), 
-  db: Session = Depends(get_db),
-  request: Request = None
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
 ):
-  """Delete a user (admin only)"""
-  user = db.query(User).filter(User.id == user_id).first()
-  if not user:
-      raise HTTPException(status_code=404, detail="User not found")
-  
-  # Prevent admins from deleting themselves
-  if user.id == current_user.id:
-      raise HTTPException(
-          status_code=400, 
-          detail="Admins cannot delete themselves"
-      )
-  
-  # Save user info for the activity log
-  deleted_username = user.username
-  deleted_role = user.role
-  
-  db.delete(user)
-  db.commit()
-  
-  # Log the user deletion activity
-  ip = request.client.host if request else None
-  user_agent = request.headers.get("user-agent") if request else None
-  log_activity(
-    db=db,
-    username=current_user.username,
-    action="User deleted",
-    details=f"Deleted user '{deleted_username}' with role '{deleted_role}'",
-    ip_address=ip,
-    user_agent=user_agent
-  )
-  
-  return None
-
-@router.get("/stats", response_model=SystemStats)
-async def get_system_stats(current_user: User = Depends(has_role("admin")), db: Session = Depends(get_db)):
-    """Get system statistics (admin only)"""
-    total_users = db.query(User).count()
-    active_users = db.query(User).filter(User.is_active == True).count()
-    researchers = db.query(User).filter(User.role == "researcher").count()
-    regular_users = db.query(User).filter(User.role == "user").count()
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     
-    # In a real system, you would get actual system metrics
-    # For this demo, we'll use mock data
+    # Don't allow deleting yourself
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    username = user.username
+    db.delete(user)
+    db.commit()
+    
+    # Log the activity
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="User deleted",
+        details=f"Deleted user {username} (ID: {user_id})"
+    )
+    
+    return {"message": "User deleted successfully"}
+
+# Activity log endpoints
+@router.get("/activity", response_model=List[ActivityLogResponse])
+async def get_activity_logs(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    username: Optional[str] = None,
+    action: Optional[str] = None,
+    page_url: Optional[str] = None,  # Add page_url filter
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))  # Only admin can view logs
+):
+    # Build query
+    query = db.query(ActivityLog)
+    
+    # Apply filters
+    if username:
+        query = query.filter(ActivityLog.username == username)
+    if action:
+        query = query.filter(ActivityLog.action == action)
+    if page_url:  # Add page_url filter
+        query = query.filter(ActivityLog.page_url == page_url)
+    
+    # Apply date filters
+    ist = pytz.timezone('Asia/Kolkata')
+    if start_date:
+        try:
+            start_datetime = datetime.fromisoformat(start_date.replace('Z', '+00:00')).astimezone(ist)
+            query = query.filter(ActivityLog.timestamp >= start_datetime)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_datetime = datetime.fromisoformat(end_date.replace('Z', '+00:00')).astimezone(ist)
+            query = query.filter(ActivityLog.timestamp <= end_datetime)
+        except ValueError:
+            pass
+    
+    # Order by timestamp (newest first)
+    query = query.order_by(desc(ActivityLog.timestamp))
+    
+    # Apply pagination
+    logs = query.offset(offset).limit(limit).all()
+    
+    # Print debug information
+    print(f"Retrieved {len(logs)} activity logs")
+    for log in logs[:5]:  # Print first 5 logs for debugging
+        print(f"Log: id={log.id}, username={log.username}, action={log.action}")
+    
+    return logs
+
+@router.post("/activity/log")
+async def log_admin_activity(
+    log_data: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Changed from has_role("admin") to get_current_user
+):
+    # Log the activity
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action=log_data.get("action", "Admin action"),
+        details=log_data.get("details"),
+        ip_address=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        page_url=log_data.get("page_url")  # Include page_url
+    )
+    
+    return {"message": "Activity logged successfully"}
+
+# System statistics
+@router.get("/stats", response_model=SystemStatsResponse)
+async def get_system_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
+):
+    # Get IST timezone
+    ist = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(ist)
+    yesterday = now - timedelta(days=1)
+    
+    # Calculate stats
+    total_users = db.query(func.count(User.id)).scalar()
+    active_users = db.query(func.count(User.id)).filter(User.is_active == True).scalar()
+    total_logs = db.query(func.count(ActivityLog.id)).scalar()
+    recent_logs = db.query(func.count(ActivityLog.id)).filter(ActivityLog.timestamp >= yesterday).scalar()
+    
     return {
         "total_users": total_users,
         "active_users": active_users,
-        "researchers": researchers,
-        "regular_users": regular_users,
-        "system_uptime": "3 days, 7 hours",
-        "database_size": "42.5 MB"
+        "total_activity_logs": total_logs,
+        "recent_activity": recent_logs
     }
 
-# Update the activity endpoint to return real data
-@router.get("/activity", response_model=List[ActivityLogResponse])
-async def get_recent_activity(
-  current_user: User = Depends(has_role("admin")), 
-  db: Session = Depends(get_db),
-  limit: int = 50,
-  skip: int = 0
-):
-  """Get recent system activity from the database (admin only)"""
-  # Log this admin action
-  log_activity(
-      db=db,
-      username=current_user.username,
-      action="View activity logs",
-      details=f"Admin viewed activity logs with limit={limit}, skip={skip}"
-  )
-  
-  # Query the activity logs
-  logs = db.query(ActivityLog) \
-          .order_by(ActivityLog.timestamp.desc()) \
-          .offset(skip) \
-          .limit(limit) \
-          .all()
-  
-  # Ensure timestamps are in ISO format for consistent parsing
-  for log in logs:
-      if isinstance(log.timestamp, datetime):
-          # Convert to ISO format string if it's a datetime object
-          log.timestamp = log.timestamp.isoformat()
-  
-  return logs
-
-# Add a new endpoint to clear activity logs (with proper authorization)
-@router.delete("/activity/clear", status_code=204)
-async def clear_activity_logs(
-    current_user: User = Depends(has_role("admin")),
+# Role management
+@router.get("/roles")
+async def get_roles(
     db: Session = Depends(get_db),
-    days: Optional[int] = None
+    current_user: User = Depends(has_role("admin"))
 ):
-    """Clear activity logs (admin only)"""
-    try:
-        # Log this admin action
-        log_activity(
-            db=db,
-            username=current_user.username,
-            action="Clear activity logs",
-            details=f"Admin cleared activity logs older than {days} days" if days else "Admin cleared all activity logs"
-        )
-        
-        if days:
-            # Delete logs older than specified days
-            cutoff_date = datetime.now() - timedelta(days=days)
-            db.query(ActivityLog).filter(ActivityLog.timestamp < cutoff_date).delete()
-        else:
-            # Don't delete all logs - keep at least the most recent ones
-            # This is to avoid completely emptying the log table
-            logs_to_keep = db.query(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(10).all()
-            keep_ids = [log.id for log in logs_to_keep]
-            db.query(ActivityLog).filter(ActivityLog.id.notin_(keep_ids)).delete()
-            
-        db.commit()
-        return None
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to clear logs: {str(e)}")
+    roles = db.query(Role).all()
+    return [{"id": role.id, "name": role.name, "description": role.description} for role in roles]
 
-# Add an endpoint to log custom admin actions
-@router.post("/activity/log", status_code=201)
-async def add_activity_log(
-    action: str,
-    details: Optional[str] = None,
-    username: Optional[str] = None,
-    current_user: User = Depends(has_role("admin")),
+@router.post("/roles")
+async def create_role(
+    role_data: dict,
     db: Session = Depends(get_db),
-    request: Request = None
+    current_user: User = Depends(has_role("admin"))
 ):
-    """Add a custom activity log entry (admin only)"""
-    try:
-        log_username = username or current_user.username
-        ip = request.client.host if request else None
-        user_agent = request.headers.get("user-agent") if request else None
-        
-        log_activity(
-            db=db,
-            username=log_username,
-            action=action,
-            details=details,
-            ip_address=ip,
-            user_agent=user_agent
+    # Check if role exists
+    existing_role = db.query(Role).filter(Role.name == role_data["name"]).first()
+    if existing_role:
+        raise HTTPException(status_code=400, detail="Role already exists")
+    
+    # Create new role
+    new_role = Role(
+        name=role_data["name"],
+        description=role_data.get("description", "")
+    )
+    db.add(new_role)
+    db.commit()
+    db.refresh(new_role)
+    
+    # Log the activity
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="Role created",
+        details=f"Created role {new_role.name} (ID: {new_role.id})"
+    )
+    
+    return {"id": new_role.id, "name": new_role.name, "description": new_role.description}
+
+@router.put("/roles/{role_id}")
+async def update_role(
+    role_id: int,
+    role_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
+):
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # Update role fields
+    if "name" in role_data:
+        # Check if the new name already exists
+        if role_data["name"] != role.name:
+            existing_role = db.query(Role).filter(Role.name == role_data["name"]).first()
+            if existing_role:
+                raise HTTPException(status_code=400, detail="Role name already exists")
+        role.name = role_data["name"]
+    
+    if "description" in role_data:
+        role.description = role_data["description"]
+    
+    db.commit()
+    db.refresh(role)
+    
+    # Log the activity
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="Role updated",
+        details=f"Updated role {role.name} (ID: {role.id})"
+    )
+    
+    return {"id": role.id, "name": role.name, "description": role.description}
+
+@router.delete("/roles/{role_id}")
+async def delete_role(
+    role_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
+):
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # Check if role is in use
+    users_with_role = db.query(User).filter(User.role == role.name).count()
+    if users_with_role > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete role that is assigned to {users_with_role} users"
         )
-        
-        return {"status": "success", "message": "Activity logged successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to log activity: {str(e)}")
+    
+    role_name = role.name
+    db.delete(role)
+    db.commit()
+    
+    # Log the activity
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="Role deleted",
+        details=f"Deleted role {role_name} (ID: {role_id})"
+    )
+    
+    return {"message": "Role deleted successfully"}
 
 @router.get("/settings", response_model=SystemSettings)
 async def get_system_settings(current_user: User = Depends(has_role("admin"))):
     """Get system settings (admin only)"""
     return system_settings
 
+# Add more logging to the settings update endpoint
 @router.put("/settings", response_model=SystemSettings)
 async def update_system_settings(
     settings: SystemSettingUpdate,
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_role("admin")),
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """Update system settings (admin only)"""
+    changes = []
+    
     if settings.maintenance_mode is not None:
+        old_value = system_settings["maintenance_mode"]
         system_settings["maintenance_mode"] = settings.maintenance_mode
+        if old_value != settings.maintenance_mode:
+            changes.append(f"maintenance_mode: {old_value} -> {settings.maintenance_mode}")
     
     if settings.debug_mode is not None:
+        old_value = system_settings["debug_mode"]
         system_settings["debug_mode"] = settings.debug_mode
+        if old_value != settings.debug_mode:
+            changes.append(f"debug_mode: {old_value} -> {settings.debug_mode}")
     
     if settings.api_rate_limiting is not None:
+        old_value = system_settings["api_rate_limiting"]
         system_settings["api_rate_limiting"] = settings.api_rate_limiting
+        if old_value != settings.debug_mode:
+            changes.append(f"api_rate_limiting: {old_value} -> {settings.api_rate_limiting}")
+    
+    # Log the settings changes
+    if changes:
+        ip = request.client.host if request else None
+        user_agent = request.headers.get("user-agent") if request else None
+        log_activity(
+            db=db,
+            username=current_user.username,
+            action="System settings updated",
+            details=", ".join(changes),
+            ip_address=ip,
+            user_agent=user_agent
+        )
     
     return system_settings
 
 @router.post("/backup", status_code=200)
 async def run_backup(
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_role("admin")),
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """Run a database backup (admin only)"""
     # In a real system, you would run an actual backup process
     # For this demo, we'll just update the last backup time
     
+    # Log the backup action
+    ip = request.client.host if request else None
+    user_agent = request.headers.get("user-agent") if request else None
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="Database backup initiated",
+        details="Manual backup started by admin",
+        ip_address=ip,
+        user_agent=user_agent
+    )
+    
     def perform_backup():
         # Simulate a backup process
         import time
         time.sleep(2)  # Simulate a 2-second backup process
-        system_settings["last_backup"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ist = pytz.timezone('Asia/Kolkata')
+        system_settings["last_backup"] = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Log backup completion
+        log_activity(
+            db=db,
+            username=current_user.username,
+            action="Database backup completed",
+            details="Backup completed successfully"
+        )
     
     background_tasks.add_task(perform_backup)
     return {"message": "Backup started"}
 
 @router.post("/export-data", status_code=200)
-async def export_system_data(current_user: User = Depends(has_role("admin"))):
+async def export_system_data(
+    current_user: User = Depends(has_role("admin")),
+    db: Session = Depends(get_db),
+    request: Request = None
+):
     """Export system data (admin only)"""
     # In a real system, you would generate and return actual export data
     # For this demo, we'll just return a success message
+    
+    # Log the export action
+    ip = request.client.host if request else None
+    user_agent = request.headers.get("user-agent") if request else None
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="Data export initiated",
+        details="System data export started by admin",
+        ip_address=ip,
+        user_agent=user_agent
+    )
+    
     return {"message": "Data export initiated", "download_url": "/api/admin/download-export"}
 
 @router.post("/cleanup-data", status_code=200)

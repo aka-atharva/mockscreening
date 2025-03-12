@@ -1,40 +1,41 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import Column, String, DateTime
-from jose import JWTError, jwt
-from datetime import datetime, timedelta
 from typing import Optional
-from pydantic import BaseModel, EmailStr
-import secrets
-import uuid
-import os
-import logging
+from datetime import datetime, timedelta
+from jose import jwt
+from pydantic import BaseModel, ConfigDict
+import pytz
 
-from .models import User, get_db, Base, ActivityLog
+from .models import User, get_db, ActivityLog, Role
 
-# Generate a secure random key for JWT
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", secrets.token_hex(32))
+# Router
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Configuration
+SECRET_KEY = "your-secret-key"  # In production, use a secure key and store it in environment variables
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Token model
+# OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+
+# Models
 class Token(BaseModel):
     access_token: str
     token_type: str
-    role: str
+    user_id: int
     username: str
+    role: str
 
 class TokenData(BaseModel):
     username: Optional[str] = None
-    role: Optional[str] = None
 
-# User models
 class UserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: Optional[str] = "user"
+    role: str = "user"
 
 class UserResponse(BaseModel):
     id: int
@@ -42,35 +43,8 @@ class UserResponse(BaseModel):
     email: str
     role: str
     is_active: bool
-
-    class Config:
-        orm_mode = True
-
-# Password reset models
-class PasswordResetRequest(BaseModel):
-    email: EmailStr
-
-class PasswordReset(BaseModel):
-    token: str
-    password: str
-
-# Password reset token model
-class PasswordResetToken(Base):
-    __tablename__ = "password_reset_tokens"
-
-    token = Column(String, primary_key=True, index=True)
-    email = Column(String, index=True)
-    expires_at = Column(DateTime)
-
-# Create the password reset tokens table
-from .models import engine
-Base.metadata.create_all(bind=engine)
-
-# OAuth2 setup
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
-
-# Router
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+    
+    model_config = ConfigDict(from_attributes=True)  # Updated from orm_mode
 
 # Helper functions
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -78,24 +52,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_user(db: Session, username: str):
-    return db.query(User).filter(User.username == username).first()
-
-def get_user_by_email(db: Session, email: str):
-    return db.query(User).filter(User.email == email).first()
-
-def authenticate_user(db: Session, username: str, password: str):
-    user = get_user(db, username)
-    if not user or not user.verify_password(password):
-        return False
-    return user
-
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -106,165 +68,139 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-        token_data = TokenData(username=username, role=payload.get("role"))
-    except JWTError:
+        token_data = TokenData(username=username)
+    except jwt.JWTError:
         raise credentials_exception
-    user = get_user(db, username=token_data.username)
+    user = db.query(User).filter(User.username == token_data.username).first()
     if user is None:
         raise credentials_exception
     return user
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)):
+def get_current_active_user(current_user: User = Depends(get_current_user)):
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Role-based access control
-def has_role(required_role: str):
-    async def role_checker(current_user: User = Depends(get_current_user)):
-        if required_role == "admin" and current_user.role != "admin":
+def has_role(role: str):
+    def role_checker(current_user: User = Depends(get_current_active_user)):
+        if current_user.role != role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions"
-            )
-        if required_role == "researcher" and current_user.role not in ["admin", "researcher"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions"
+                detail=f"User does not have the required role: {role}"
             )
         return current_user
     return role_checker
 
-# Add this function to the auth.py file, near the has_role function
+def log_activity(
+    db: Session, 
+    username: str, 
+    action: str, 
+    details: Optional[str] = None, 
+    ip_address: Optional[str] = None, 
+    user_agent: Optional[str] = None,
+    page_url: Optional[str] = None
+):
+    """
+    Log user activity in the database
+    """
+    try:
+        # Get IST timezone
+        ist = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(ist)
+        
+        # Print debug information
+        print(f"Creating activity log: username={username}, action={action}, details={details}")
+        
+        # Ensure username is not empty
+        if not username:
+            username = "anonymous"
+        
+        # Create activity log
+        activity_log = ActivityLog(
+            username=username,
+            action=action,
+            details=details,
+            timestamp=now,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            page_url=page_url
+        )
+        db.add(activity_log)
+        db.commit()
+        
+        print(f"Activity log created successfully: {activity_log.id}")
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to log activity: {str(e)}")
+        print(f"Error logging activity: {str(e)}")
+        db.rollback()
 
 def validate_role(role_name: str, db: Session):
     """
-    Validates if a role exists or creates it if it doesn't
+    Validate that a role exists, and create it if it doesn't
     """
-    from .models import Role
-    
     # Check if role exists
-    db_role = db.query(Role).filter(Role.name == role_name).first()
-    
-    # If role doesn't exist, create it
-    if not db_role:
+    role = db.query(Role).filter(Role.name == role_name).first()
+    if not role:
+        # Create the role
         new_role = Role(
             name=role_name,
             description=f"Auto-created role: {role_name}"
         )
         db.add(new_role)
         db.commit()
-        return True
-    
     return True
 
-# Password reset functions
-def generate_password_reset_token(db: Session, email: str):
-    # Delete any existing tokens for this email
-    db.query(PasswordResetToken).filter(PasswordResetToken.email == email).delete()
-    
-    # Generate a new token
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=24)
-    
-    # Store the token
-    db_token = PasswordResetToken(
-        token=token,
-        email=email,
-        expires_at=expires_at
-    )
-    db.add(db_token)
-    db.commit()
-    
-    return token
-
-def verify_password_reset_token(db: Session, token: str):
-    # Find the token
-    db_token = db.query(PasswordResetToken).filter(PasswordResetToken.token == token).first()
-    
-    if not db_token:
-        return None
-    
-    # Check if token is expired
-    if db_token.expires_at < datetime.utcnow():
-        # Delete expired token
-        db.delete(db_token)
-        db.commit()
-        return None
-    
-    return db_token.email
-
-# Simulate sending an email (in a real app, you would use an email service)
-def send_password_reset_email(email: str, token: str):
-    # In a real application, you would send an actual email
-    # For this demo, we'll just print the reset link
-    reset_link = f"http://localhost:3000/reset-password?token={token}"
-    print(f"Password reset link for {email}: {reset_link}")
-
-# Add logging functionality (keep the rest of the file the same)
-def log_activity(db, username, action, details=None, ip_address=None, user_agent=None):
-    """Record user activity in the database"""
-    try:
-        activity = ActivityLog(
-            username=username,
-            action=action,
-            details=details,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
-        db.add(activity)
-        db.commit()
-    except Exception as e:
-        logging.error(f"Failed to log activity: {e}")
-        db.rollback()
-
-# Endpoints
+# Routes
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(), 
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
     request: Request = None
 ):
-    user = authenticate_user(db, form_data.username, form_data.password)
-    if not user:
-        # Log failed login attempt
-        ip = request.client.host if request else None
-        user_agent = request.headers.get("user-agent") if request else None
-        log_activity(
-            db=db,
-            username=form_data.username,
-            action="Failed login attempt",
-            details="Invalid credentials",
-            ip_address=ip,
-            user_agent=user_agent
-        )
-        
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not user.verify_password(form_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Log the successful login
+    # Log the login activity with the actual username
     ip = request.client.host if request else None
     user_agent = request.headers.get("user-agent") if request else None
+    
+    # Print debug information
+    print(f"Logging login activity for user: {user.username}")
+    
+    # Explicitly use the user's username, not "system"
     log_activity(
         db=db,
-        username=user.username,
-        action="User login",
-        details="Successful login",
+        username=user.username,  # Use the actual username, not "system"
+        action="Login",
+        details=f"User {user.username} logged in successfully",
         ip_address=ip,
         user_agent=user_agent
     )
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires
+        data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role, "username": user.username}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "username": user.username,
+        "role": user.role
+    }
 
 @router.post("/register", response_model=UserResponse)
-async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register_user(
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
     # Check if username exists
     db_user = db.query(User).filter(User.username == user_data.username).first()
     if db_user:
@@ -274,6 +210,9 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db_email = db.query(User).filter(User.email == user_data.email).first()
     if db_email:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate role
+    validate_role(user_data.role, db)
     
     # Create new user
     hashed_password = User.get_password_hash(user_data.password)
@@ -286,67 +225,42 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    
+    # Log the registration activity
+    ip = request.client.host if request else None
+    user_agent = request.headers.get("user-agent") if request else None
+    log_activity(
+        db=db,
+        username=db_user.username,
+        action="Registration",
+        details="User registered successfully",
+        ip_address=ip,
+        user_agent=user_agent
+    )
+    
     return db_user
 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
-@router.get("/admin", response_model=UserResponse)
-async def admin_only(current_user: User = Depends(has_role("admin"))):
-    return current_user
-
-@router.get("/researcher", response_model=UserResponse)
-async def researcher_only(current_user: User = Depends(has_role("researcher"))):
-    return current_user
-
-# Password reset endpoints
-@router.post("/forgot-password")
-async def forgot_password(
-    request: PasswordResetRequest, 
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+@router.post("/logout")
+async def logout(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
-    # Find user by email
-    user = get_user_by_email(db, request.email)
+    # Log the logout activity
+    ip = request.client.host if request else None
+    user_agent = request.headers.get("user-agent") if request else None
+    log_activity(
+        db=db,
+        username=current_user.username,
+        action="Logout",
+        details="User logged out",
+        ip_address=ip,
+        user_agent=user_agent
+    )
     
-    # Always return success, even if email doesn't exist (security best practice)
-    # This prevents user enumeration attacks
-    if user:
-        # Generate token
-        token = generate_password_reset_token(db, request.email)
-        
-        # Send email in background
-        background_tasks.add_task(send_password_reset_email, request.email, token)
-    
-    return {"message": "If an account with that email exists, a password reset link has been sent"}
-
-@router.post("/reset-password")
-async def reset_password(reset_data: PasswordReset, db: Session = Depends(get_db)):
-    # Verify token
-    email = verify_password_reset_token(db, reset_data.token)
-    if not email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired token"
-        )
-    
-    # Find user
-    user = get_user_by_email(db, email)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not found"
-        )
-    
-    # Update password
-    user.hashed_password = User.get_password_hash(reset_data.password)
-    
-    # Delete the token
-    db.query(PasswordResetToken).filter(PasswordResetToken.token == reset_data.token).delete()
-    
-    # Commit changes
-    db.commit()
-    
-    return {"message": "Password has been reset successfully"}
+    return {"message": "Logged out successfully"}
 

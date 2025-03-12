@@ -120,7 +120,10 @@ export default function ForgotPasswordPage() {
               <p className="text-gray-400 mb-6">
                 If an account exists with the email {email}, you will receive password reset instructions.
               </p>
-              <Link href="/login" className="text-purple-400 hover:text-purple-300 flex items-center justify-center">
+              <Link
+                href="/login"
+                className="text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 flex items-center justify-center"
+              >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Login
               </Link>
@@ -160,7 +163,10 @@ export default function ForgotPasswordPage() {
               </form>
 
               <div className="mt-6 text-center">
-                <Link href="/login" className="text-purple-400 hover:text-purple-300 flex items-center justify-center">
+                <Link
+                  href="/login"
+                  className="text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 flex items-center justify-center"
+                >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Login
                 </Link>

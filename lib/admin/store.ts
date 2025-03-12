@@ -30,9 +30,12 @@ interface AdminState {
 
   isProcessing: boolean
   setIsProcessing: (isProcessing: boolean) => void
+
+  // Add a function to add a role if it doesn't exist
+  addRoleIfNotExists: (roleName: string, description?: string) => void
 }
 
-export const useAdminStore = create<AdminState>((set) => ({
+export const useAdminStore = create<AdminState>((set, get) => ({
   loading: true,
   setLoading: (loading) => set({ loading }),
 
@@ -73,6 +76,13 @@ export const useAdminStore = create<AdminState>((set) => ({
       description: "Basic access to application features.",
       permissions: ["view_reports", "personal_settings"],
     },
+    // Add the "view" role explicitly
+    {
+      id: 4,
+      name: "view",
+      description: "View-only access to application features.",
+      permissions: ["view_reports"],
+    },
   ],
   setRoles: (roles) => set({ roles }),
 
@@ -90,5 +100,24 @@ export const useAdminStore = create<AdminState>((set) => ({
 
   isProcessing: false,
   setIsProcessing: (isProcessing) => set({ isProcessing }),
+
+  // Add a function to add a role if it doesn't exist
+  addRoleIfNotExists: (roleName, description) => {
+    const { roles } = get()
+
+    // Check if role already exists
+    if (!roles.some((role) => role.name === roleName)) {
+      // Add the role
+      const newRole = {
+        id: roles.length + 1,
+        name: roleName,
+        description: description || `Auto-created role: ${roleName}`,
+        permissions: ["view_reports"],
+      }
+
+      set({ roles: [...roles, newRole] })
+      console.log(`Added missing role: ${roleName}`)
+    }
+  },
 }))
 

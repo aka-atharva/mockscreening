@@ -11,6 +11,8 @@ from .auth import router as auth_router
 from .datapuur import router as datapuur_router
 from .kginsights import router as kginsights_router
 from .admin import router as admin_router
+from .middleware import ActivityLoggerMiddleware
+from .migrate_db import migrate_database
 
 app = FastAPI(title="Research AI API")
 
@@ -22,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add activity logger middleware
+app.add_middleware(ActivityLoggerMiddleware)
 
 # Include routers
 app.include_router(auth_router)
@@ -37,6 +42,9 @@ async def health_check():
 # Create initial admin user if it doesn't exist
 @app.on_event("startup")
 async def startup_event():
+    # Run database migrations
+    migrate_database()
+    
     db = next(get_db())
     admin_user = db.query(User).filter(User.username == "admin").first()
     if not admin_user:

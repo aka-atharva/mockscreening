@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { RefreshCw } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ interface EditUserDialogProps {
 }
 
 export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps) {
-  const { users, setUsers, isProcessing, setIsProcessing, setNotification } = useAdminStore()
+  const { users, setUsers, isProcessing, setIsProcessing, setNotification, addRoleIfNotExists } = useAdminStore()
   const [editedUser, setEditedUser] = useState({
     username: user.username,
     email: user.email,
@@ -29,13 +29,18 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
   // Get the latest roles from the store
   const { roles } = useAdminStore()
 
+  // Ensure the user's current role exists in our roles list
+  useEffect(() => {
+    if (user.role) {
+      addRoleIfNotExists(user.role)
+    }
+  }, [user.role, addRoleIfNotExists])
+
   const handleSaveChanges = async () => {
     setIsProcessing(true)
     try {
-      // Validate role before sending to API
-      if (!roles.some((role) => role.name === editedUser.role)) {
-        throw new Error(`Role "${editedUser.role}" is not recognized. Please select a valid role.`)
-      }
+      // Make sure the role exists in our store
+      addRoleIfNotExists(editedUser.role)
 
       const updatedUser = await updateUser(user.id, editedUser)
 
@@ -103,7 +108,7 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border text-popover-foreground">
-                {useAdminStore.getState().roles.map((role) => (
+                {roles.map((role) => (
                   <SelectItem key={role.id} value={role.name}>
                     {role.name}
                   </SelectItem>

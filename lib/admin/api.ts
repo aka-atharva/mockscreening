@@ -1,5 +1,3 @@
-// API utility functions for admin dashboard
-
 export async function fetchAdminData() {
   try {
     // Get API base URL
@@ -7,7 +5,7 @@ export async function fetchAdminData() {
       if (process.env.NEXT_PUBLIC_API_URL) {
         return process.env.NEXT_PUBLIC_API_URL
       }
-      return "http://localhost:8080/api"
+      return "http://localhost:8000/api"
     }
 
     const apiUrl = getApiUrl()
@@ -34,11 +32,13 @@ export async function fetchAdminData() {
       }
       activityData = await activityResponse.json()
 
-      // Ensure timestamps are properly formatted
+      // Log the activity data for debugging
+      console.log("Fetched activity data:", activityData)
+
+      // Ensure all activities have a valid username
       activityData = activityData.map((item) => ({
         ...item,
-        // Ensure timestamp is in ISO format if it's not already
-        timestamp: item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString(),
+        username: item.username || "anonymous",
       }))
     } catch (err) {
       console.error("Error fetching activity logs:", err)
@@ -47,9 +47,10 @@ export async function fetchAdminData() {
         {
           id: 1,
           action: "User login",
-          username: "system",
+          username: "admin", // Use a real username instead of "system"
           timestamp: new Date().toISOString(),
           details: "Activity log system initialized with fallback data",
+          page_url: null,
         },
       ]
     }
@@ -115,17 +116,19 @@ export async function fetchAdminData() {
       activity: [
         {
           id: 1,
-          action: "User login",
-          username: "researcher",
+          action: "Login",
+          username: "admin", // Use a real username instead of "system"
           timestamp: new Date().toISOString(),
-          details: "Successful login",
+          details: "User admin logged in successfully",
+          page_url: null,
         },
         {
           id: 2,
-          action: "Data export",
+          action: "Page visit",
           username: "researcher",
           timestamp: new Date(Date.now() - 15 * 60000).toISOString(), // 15 minutes ago
-          details: "Exported 1,245 records",
+          details: "Visited dashboard page",
+          page_url: "/datapuur/dashboard",
         },
         {
           id: 3,
@@ -133,6 +136,7 @@ export async function fetchAdminData() {
           username: "unknown",
           timestamp: new Date(Date.now() - 30 * 60000).toISOString(), // 30 minutes ago
           details: "Invalid credentials",
+          page_url: null,
         },
       ],
       systemSettings: {
@@ -145,160 +149,31 @@ export async function fetchAdminData() {
   }
 }
 
-export async function updateSystemSetting(setting: string, value: boolean) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
-
-  const response = await fetch(`${apiUrl}/admin/settings`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ [setting]: value }),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to update setting")
-  }
-
-  return await response.json()
-}
-
-export async function runBackup() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
-
-  const response = await fetch(`${apiUrl}/admin/backup`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to start backup")
-  }
-
-  return { message: "Backup process started" }
-}
-
-export async function exportData() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
-
-  const response = await fetch(`${apiUrl}/admin/export-data`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to export data")
-  }
-
-  return { message: "Data export initiated" }
-}
-
-export async function cleanupData() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
-
-  const response = await fetch(`${apiUrl}/admin/cleanup-data`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to clean up data")
-  }
-
-  return { message: "Data cleanup process started" }
-}
-
-export async function updateUser(userId: number, userData: any) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
-
+export async function createUser(userData) {
   try {
-    const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(userData),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-
-      // Check for specific role validation errors
-      if (errorData.detail && errorData.detail.includes("Invalid role")) {
-        throw new Error(
-          `Role "${userData.role}" is not recognized by the system. Please try again or contact the administrator.`,
-        )
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
       }
-
-      throw new Error(errorData.detail || "Failed to update user")
+      return "http://localhost:8000/api"
     }
 
-    return await response.json()
-  } catch (error) {
-    console.error("Error updating user:", error)
-    throw error
-  }
-}
-
-export async function deleteUser(userId: number) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
-
-  const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
-    method: "DELETE",
-    headers: {
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
       Authorization: `Bearer ${token}`,
-    },
-  })
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.detail || "Failed to delete user")
-  }
-
-  return null
-}
-
-export async function createUser(userData: any) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
-
-  try {
     const response = await fetch(`${apiUrl}/admin/users`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: headers,
       body: JSON.stringify(userData),
     })
 
     if (!response.ok) {
       const errorData = await response.json()
-
-      // Check for specific role validation errors
-      if (errorData.detail && errorData.detail.includes("Invalid role")) {
-        throw new Error(
-          `Role "${userData.role}" is not recognized by the system. Please try again or contact the administrator.`,
-        )
-      }
-
       throw new Error(errorData.detail || "Failed to create user")
     }
 
@@ -309,22 +184,243 @@ export async function createUser(userData: any) {
   }
 }
 
-export async function clearActivityLogs(days: number) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-  const token = localStorage.getItem("token")
+export async function updateUser(userId, userData) {
+  try {
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      return "http://localhost:8000/api"
+    }
 
-  const response = await fetch(`${apiUrl}/admin/activity/clear?days=${days}`, {
-    method: "DELETE",
-    headers: {
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
       Authorization: `Bearer ${token}`,
+      Accept: "application/json",
       "Content-Type": "application/json",
-    },
-  })
+    }
 
-  if (!response.ok) {
-    throw new Error("Failed to clear activity logs")
+    const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
+      method: "PUT",
+      headers: headers,
+      body: JSON.stringify(userData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Failed to update user")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error updating user:", error)
+    throw error
   }
+}
 
-  return { message: "Activity logs cleared successfully" }
+export async function deleteUser(userId) {
+  try {
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      return "http://localhost:8000/api"
+    }
+
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
+
+    const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: headers,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Failed to delete user")
+    }
+
+    return
+  } catch (error) {
+    console.error("Error deleting user:", error)
+    throw error
+  }
+}
+
+export async function updateSystemSetting(setting, value) {
+  try {
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      return "http://localhost:8000/api"
+    }
+
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
+
+    const response = await fetch(`${apiUrl}/admin/settings`, {
+      method: "PUT",
+      headers: headers,
+      body: JSON.stringify({ [setting]: value }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Failed to update system setting")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error updating system setting:", error)
+    throw error
+  }
+}
+
+export async function runBackup() {
+  try {
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      return "http://localhost:8000/api"
+    }
+
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
+
+    const response = await fetch(`${apiUrl}/admin/backup`, {
+      method: "POST",
+      headers: headers,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Failed to run backup")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error running backup:", error)
+    throw error
+  }
+}
+
+export async function exportData() {
+  try {
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      return "http://localhost:8000/api"
+    }
+
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
+
+    const response = await fetch(`${apiUrl}/admin/export-data`, {
+      method: "POST",
+      headers: headers,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Failed to export data")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error exporting data:", error)
+    throw error
+  }
+}
+
+export async function clearActivityLogs(days) {
+  try {
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      return "http://localhost:8000/api"
+    }
+
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
+
+    const response = await fetch(`${apiUrl}/admin/activity/clear${days ? `?days=${days}` : ""}`, {
+      method: "DELETE",
+      headers: headers,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Failed to clear activity logs")
+    }
+
+    return
+  } catch (error) {
+    console.error("Error clearing activity logs:", error)
+    throw error
+  }
+}
+
+export async function cleanupData() {
+  try {
+    const getApiUrl = () => {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL
+      }
+      return "http://localhost:8000/api"
+    }
+
+    const apiUrl = getApiUrl()
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
+
+    const response = await fetch(`${apiUrl}/admin/cleanup-data`, {
+      method: "POST",
+      headers: headers,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || "Failed to cleanup data")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error cleaning up data:", error)
+    throw error
+  }
 }
 

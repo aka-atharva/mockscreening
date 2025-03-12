@@ -28,6 +28,7 @@ export function formatDate(dateInput: string | Date | null | undefined, includeS
       options.second = "2-digit"
     }
 
+    // Use toLocaleString with appropriate locale
     return date.toLocaleString("en-US", options)
   } catch (error) {
     console.error("Error formatting date:", error)
@@ -51,7 +52,10 @@ export function getRelativeTime(dateInput: string | Date | null | undefined): st
       return "Invalid date"
     }
 
+    // Get current time
     const now = new Date()
+
+    // Calculate time difference in seconds
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
     if (diffInSeconds < 60) {

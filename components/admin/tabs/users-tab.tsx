@@ -79,7 +79,9 @@ export function UsersTab() {
                     {user.is_active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="p-3 text-muted-foreground">{new Date(user.created_at).toLocaleDateString()}</td>
+                <td className="p-3 text-muted-foreground">
+                  {user.created_at ? new Date(user.created_at).toLocaleDateString() : "N/A"}
+                </td>
                 <td className="p-3">
                   <div className="flex space-x-2">
                     <Button

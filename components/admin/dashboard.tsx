@@ -9,9 +9,7 @@ import { fetchAdminData } from "@/lib/admin/api"
 import { AdminTabs } from "@/components/admin/tabs"
 import { NotificationDisplay } from "@/components/admin/notification"
 import { useAdminStore } from "@/lib/admin/store"
-
-// Import the syncRoles function
-import { syncRoles } from "@/lib/admin/sync-roles"
+import LoadingSpinner from "@/components/loading-spinner"
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -32,21 +30,31 @@ export default function AdminDashboard() {
     setActivity,
     systemSettings,
     setSystemSettings,
+    addRoleIfNotExists,
   } = useAdminStore()
 
-  // Add this to the useEffect hook that loads data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       try {
         const data = await fetchAdminData()
-        setStats(data.stats)
-        setUsers(data.users)
-        setActivity(data.activity)
-        setSystemSettings(data.systemSettings)
 
-        // Synchronize roles
-        await syncRoles()
+        // Ensure we have valid data before setting state
+        if (data) {
+          setStats(data.stats || {})
+          setUsers(data.users || [])
+          setActivity(data.activity || [])
+          setSystemSettings(data.systemSettings || {})
+
+          // Ensure all roles from users are in our roles list
+          if (data.users && data.users.length > 0) {
+            data.users.forEach((user) => {
+              if (user.role) {
+                addRoleIfNotExists(user.role)
+              }
+            })
+          }
+        }
 
         setError(null)
       } catch (err) {
@@ -111,7 +119,12 @@ export default function AdminDashboard() {
         </div>
 
         <div className="p-6">
-          <AdminTabs activeTab={activeTab} loading={loading} error={error} />
+          {loading && (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          )}
+          {!loading && <AdminTabs activeTab={activeTab} loading={loading} error={error} />}
         </div>
       </div>
     </div>

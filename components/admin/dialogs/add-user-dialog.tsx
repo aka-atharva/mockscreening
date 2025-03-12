@@ -17,7 +17,7 @@ interface AddUserDialogProps {
 }
 
 export function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
-  const { users, setUsers, isProcessing, setIsProcessing, setNotification, roles } = useAdminStore()
+  const { users, setUsers, isProcessing, setIsProcessing, setNotification, roles, addRoleIfNotExists } = useAdminStore()
   const [newUser, setNewUser] = useState({
     username: "",
     email: "",
@@ -35,14 +35,8 @@ export function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
       return
     }
 
-    // Validate role before sending to API
-    if (!roles.some((role) => role.name === newUser.role)) {
-      setNotification({
-        type: "error",
-        message: `Role "${newUser.role}" is not recognized. Please select a valid role.`,
-      })
-      return
-    }
+    // Make sure the role exists in our store
+    addRoleIfNotExists(newUser.role)
 
     setIsProcessing(true)
     try {
